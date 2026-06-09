@@ -23,7 +23,7 @@ export class Secret {
     password: string;
 
     @Prop()
-    logoUrl?: string;
+    logo?: string;
 }
 
 export const SecretSchema = SchemaFactory.createForClass(Secret);

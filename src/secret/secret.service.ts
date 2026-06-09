@@ -41,7 +41,7 @@ export class SecretService {
         website,
         username,
         password,
-        logoUrl: uploadedFile?.secure_url || ""
+        logo: uploadedFile?.secure_url || ""
       });
 
       return {
@@ -54,7 +54,10 @@ export class SecretService {
 
   async getAllSecrets(userId: string) {
     try {
-      const secrets = await this.secretModel.find({ user: new Types.ObjectId(userId) }).select("-__v").sort({ createdAt: -1 });
+      const secrets = await this.secretModel
+        .find({ user: new Types.ObjectId(userId) })
+        .sort({ createdAt: -1 })
+        .select("-__v -user");
       return secrets;
     } catch (error) {
       throw error;
@@ -64,8 +67,8 @@ export class SecretService {
   async deleteSecret(id: string, userId: string) {
     try {
       const secret = await this.secretModel.findOne({ _id: new Types.ObjectId(id), user: new Types.ObjectId(userId) });
-      if (secret && secret.logoUrl) {
-        const publicId = this.getPublicIdFromUrl(secret.logoUrl);
+      if (secret && secret.logo) {
+        const publicId = this.getPublicIdFromUrl(secret.logo);
         if (publicId) {
           await this.cloudinaryService.deleteFile(publicId);
         }
@@ -120,7 +123,7 @@ export class SecretService {
           website: website || exists.website,
           username: username || exists.username,
           password: password || exists.password,
-          logoUrl: uploadedFile?.secure_url || exists.logoUrl
+          logo: uploadedFile?.secure_url || exists.logo
         },
         { new: true }
       );
