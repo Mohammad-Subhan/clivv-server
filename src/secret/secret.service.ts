@@ -146,6 +146,11 @@ export class SecretService {
           throw new NotFoundException("User not found");
         }
 
+        const isPasswordValid = await bcrypt.compare(masterPassword, user.password);
+        if (!isPasswordValid) {
+          throw new BadRequestException("Invalid master password");
+        }
+
         const { encryptedPassword, iv, authTag } = this.cryptoService.encryptPassword(
           password,
           masterPassword,
@@ -179,6 +184,16 @@ export class SecretService {
       if (!updatedSecret) {
         throw new NotFoundException("Secret not found");
       }
+
+      if (uploadedFile && exists.logo) {
+        const publicId = this.getPublicIdFromUrl(exists.logo);
+        if (publicId) {
+          this.cloudinaryService.deleteFile(publicId).catch((err) => {
+            console.error("Failed to delete old logo from Cloudinary:", err);
+          });
+        }
+      }
+
       return {
         message: "Secret updated successfully",
       };
