@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateSecretDto } from './dto/createSecret.dto';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { UploadApiResponse } from 'cloudinary';
@@ -6,11 +6,17 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Secret, SecretDocument } from './schemas/secret.schema';
 import { Model, Types } from 'mongoose';
 import { UpdateSecretDto } from './dto/updateSecret.dto';
+import { UserService } from 'src/user/user.service';
+import { CryptoService } from 'src/crypto/crypto.service';
+import { RevealSecretDto } from './dto/revealSecret.dto';
+import bcrypt from "bcrypt";
 
 @Injectable()
 export class SecretService {
   constructor(
     private readonly cloudinaryService: CloudinaryService,
+    private readonly userService: UserService,
+    private readonly cryptoService: CryptoService,
     @InjectModel(Secret.name) private readonly secretModel: Model<SecretDocument>
   ) { }
 
@@ -22,13 +28,28 @@ export class SecretService {
 
   async createSecret(userId: string, file: Express.Multer.File, createSecretDto: CreateSecretDto) {
     try {
-      const { name, website, username, password } = createSecretDto;
+      const { name, website, username, password, masterPassword } = createSecretDto;
 
       const exists = await this.secretModel.findOne({ name, website, user: new Types.ObjectId(userId) });
-
       if (exists) {
         throw new ConflictException("A secret with this name and website already exists");
       }
+
+      const user = await this.userService.findOne({ _id: new Types.ObjectId(userId) });
+      if (!user) {
+        throw new NotFoundException("User not found");
+      }
+
+      const isPasswordValid = await bcrypt.compare(masterPassword, user.password);
+      if (!isPasswordValid) {
+        throw new BadRequestException("Invalid master password");
+      }
+
+      const { encryptedPassword, iv, authTag } = this.cryptoService.encryptPassword(
+        password,
+        masterPassword,
+        user.secretSalt,
+      );
 
       let uploadedFile: UploadApiResponse | null = null;
       if (file) {
@@ -40,7 +61,9 @@ export class SecretService {
         name,
         website,
         username,
-        password,
+        encryptedPassword,
+        iv,
+        authTag,
         logo: uploadedFile?.secure_url || ""
       });
 
@@ -57,7 +80,7 @@ export class SecretService {
       const secrets = await this.secretModel
         .find({ user: new Types.ObjectId(userId) })
         .sort({ createdAt: -1 })
-        .select("-__v -user");
+        .select("-__v -user -encryptedPassword -iv -authTag");
       return secrets;
     } catch (error) {
       throw error;
@@ -88,7 +111,7 @@ export class SecretService {
 
   async updateSecret(id: string, userId: string, updateSecretDto: UpdateSecretDto, file: Express.Multer.File) {
     try {
-      const { name, website, username, password } = updateSecretDto;
+      const { name, website, username, password, masterPassword } = updateSecretDto;
 
       const exists = await this.secretModel.findOne({
         _id: new Types.ObjectId(id),
@@ -108,6 +131,30 @@ export class SecretService {
         throw new ConflictException("A secret with this name and website already exists");
       }
 
+      let encryptionFields: { encryptedPassword: string, iv: string, authTag: string } = {
+        encryptedPassword: exists.encryptedPassword,
+        iv: exists.iv,
+        authTag: exists.authTag
+      };
+      if (password) {
+        if (!masterPassword) {
+          throw new BadRequestException("Master password is required to update the password");
+        }
+
+        const user = await this.userService.findOne({ _id: new Types.ObjectId(userId) });
+        if (!user) {
+          throw new NotFoundException("User not found");
+        }
+
+        const { encryptedPassword, iv, authTag } = this.cryptoService.encryptPassword(
+          password,
+          masterPassword,
+          user.secretSalt,
+        );
+
+        encryptionFields = { encryptedPassword, iv, authTag };
+      }
+
       let uploadedFile: UploadApiResponse | null = null;
       if (file) {
         uploadedFile = await this.cloudinaryService.uploadFile(file);
@@ -122,7 +169,9 @@ export class SecretService {
           name: name || exists.name,
           website: website || exists.website,
           username: username || exists.username,
-          password: password || exists.password,
+          encryptedPassword: encryptionFields.encryptedPassword,
+          iv: encryptionFields.iv,
+          authTag: encryptionFields.authTag,
           logo: uploadedFile?.secure_url || exists.logo
         },
         { new: true }
@@ -132,6 +181,37 @@ export class SecretService {
       }
       return {
         message: "Secret updated successfully",
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async revealSecret(body: RevealSecretDto, userId: string) {
+    try {
+      const { id, masterPassword } = body;
+      const secret = await this.secretModel.findOne({
+        _id: new Types.ObjectId(id),
+        user: new Types.ObjectId(userId)
+      }).select("encryptedPassword iv authTag");
+      if (!secret) {
+        throw new NotFoundException("Secret not found");
+      }
+
+      const user = await this.userService.findOne({ _id: new Types.ObjectId(userId) });
+      if (!user) {
+        throw new NotFoundException("User not found");
+      }
+
+      const password = this.cryptoService.decryptPassword(
+        secret.encryptedPassword,
+        secret.iv,
+        secret.authTag,
+        masterPassword,
+        user.secretSalt
+      );
+      return {
+        password: password
       };
     } catch (error) {
       throw error;

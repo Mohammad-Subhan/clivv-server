@@ -20,7 +20,13 @@ export class Secret {
     username: string;
 
     @Prop({ required: true })
-    password: string;
+    encryptedPassword: string;
+
+    @Prop({ required: true })
+    iv: string;
+
+    @Prop({ required: true })
+    authTag: string;
 
     @Prop()
     logo?: string;

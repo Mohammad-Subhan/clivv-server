@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import { ConfigModule } from '@nestjs/config';
 import { SecretModule } from './secret/secret.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { CryptoModule } from './crypto/crypto.module';
 
 
 @Module({
@@ -16,7 +17,8 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
     AuthModule,
     UserModule,
     SecretModule,
-    CloudinaryModule
+    CloudinaryModule,
+    CryptoModule
   ],
   controllers: [AppController],
   providers: [AppService],

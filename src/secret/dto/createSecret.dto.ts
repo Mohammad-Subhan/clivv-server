@@ -16,4 +16,8 @@ export class CreateSecretDto {
     @IsNotEmpty({ message: "Password is required" })
     @IsString()
     password: string;
+
+    @IsNotEmpty({ message: "Master password is required" })
+    @IsString()
+    masterPassword: string;
 }

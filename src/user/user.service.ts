@@ -14,12 +14,13 @@ export class UserService {
         return this.userModel.findOne(filterQuery);
     }
 
-    async createUser(registerUserDto: RegisterUserDto) {
+    async createUser(registerUserDto: RegisterUserDto & { secretEncryptionSalt: string }) {
         try {
             const user = await this.userModel.create({
                 name: registerUserDto.name,
                 email: registerUserDto.email,
                 password: registerUserDto.password,
+                secretSalt: registerUserDto.secretEncryptionSalt
             });
 
             return {

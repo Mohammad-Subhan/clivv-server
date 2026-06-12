@@ -4,26 +4,31 @@ import bcrypt from "bcrypt"
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
 import { LoginUserDto } from './dto/loginUser.dto';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AuthService {
+    private readonly SALT_ROUNDS = 10;
+
     constructor(
         private readonly jwtService: JwtService,
         private readonly userService: UserService
     ) { }
 
     async registerUser(registerUserDto: RegisterUserDto) {
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(registerUserDto.password, saltRounds);
+        const hashedPassword = await bcrypt.hash(registerUserDto.password, this.SALT_ROUNDS);
 
         const existingUser = await this.userService.findOne({ email: registerUserDto.email });
         if (existingUser) {
             throw new ConflictException("User already exists");
         }
 
+        const secretEncryptionSalt = randomBytes(16).toString("hex");
+
         const user = await this.userService.createUser({
             ...registerUserDto,
             password: hashedPassword,
+            secretEncryptionSalt,
         });
 
         const payload = {

@@ -16,4 +16,8 @@ export class UpdateSecretDto {
     @IsOptional()
     @IsString()
     password: string;
+
+    @IsOptional()
+    @IsString()
+    masterPassword: string;
 }
