@@ -13,11 +13,15 @@ export class CreateSecretDto {
     @IsString()
     username: string;
 
-    @IsNotEmpty({ message: "Password is required" })
+    @IsNotEmpty({ message: "Encrypted password is required" })
     @IsString()
-    password: string;
+    encryptedPassword: string;
 
-    @IsNotEmpty({ message: "Master password is required" })
+    @IsNotEmpty({ message: "IV is required" })
     @IsString()
-    masterPassword: string;
+    iv: string;
+
+    @IsNotEmpty({ message: "Auth tag is required" })
+    @IsString()
+    authTag: string;
 }

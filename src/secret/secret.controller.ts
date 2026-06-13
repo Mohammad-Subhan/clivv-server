@@ -1,11 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { SecretService } from './secret.service';
 import { CreateSecretDto } from './dto/createSecret.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { User } from 'src/auth/user.decorator';
 import { UpdateSecretDto } from './dto/updateSecret.dto';
-import { RevealSecretDto } from './dto/revealSecret.dto';
 
 @Controller('secret')
 export class SecretController {
@@ -32,12 +31,6 @@ export class SecretController {
   @Delete(':id')
   async deleteSecret(@Param('id') id: string, @User() userId: string) {
     return this.secretService.deleteSecret(id, userId);
-  }
-
-  @UseGuards(AuthGuard)
-  @Post('reveal')
-  async revealSecret(@User() userId: string, @Body() body: RevealSecretDto) {
-    return this.secretService.revealSecret(body, userId);
   }
 
   @UseGuards(AuthGuard)

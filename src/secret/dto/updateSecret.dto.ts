@@ -14,11 +14,14 @@ export class UpdateSecretDto {
     username: string;
 
     @IsOptional()
-    @IsNotEmpty()
     @IsString()
-    password: string;
+    encryptedPassword: string;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    masterPassword: string;
+    iv: string;
+
+    @IsOptional()
+    @IsString()
+    authTag: string;
 }
