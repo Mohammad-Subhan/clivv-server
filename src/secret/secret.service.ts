@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateSecretDto } from './dto/createSecret.dto';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { UploadApiResponse } from 'cloudinary';
@@ -113,6 +113,16 @@ export class SecretService {
     try {
       const { name, website, username, password, masterPassword } = updateSecretDto;
 
+      const user = await this.userService.findOne({ _id: new Types.ObjectId(userId) });
+      if (!user) {
+        throw new NotFoundException("User not found");
+      }
+
+      const isPasswordValid = await bcrypt.compare(masterPassword, user.password);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException("Invalid master password");
+      }
+
       const exists = await this.secretModel.findOne({
         _id: new Types.ObjectId(id),
         user: new Types.ObjectId(userId)
@@ -137,20 +147,6 @@ export class SecretService {
         authTag: exists.authTag
       };
       if (password) {
-        if (!masterPassword) {
-          throw new BadRequestException("Master password is required to update the password");
-        }
-
-        const user = await this.userService.findOne({ _id: new Types.ObjectId(userId) });
-        if (!user) {
-          throw new NotFoundException("User not found");
-        }
-
-        const isPasswordValid = await bcrypt.compare(masterPassword, user.password);
-        if (!isPasswordValid) {
-          throw new BadRequestException("Invalid master password");
-        }
-
         const { encryptedPassword, iv, authTag } = this.cryptoService.encryptPassword(
           password,
           masterPassword,

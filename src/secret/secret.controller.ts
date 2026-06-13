@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { SecretService } from './secret.service';
 import { CreateSecretDto } from './dto/createSecret.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -41,7 +41,7 @@ export class SecretController {
   }
 
   @UseGuards(AuthGuard)
-  @Put(':id')
+  @Patch(':id')
   @UseInterceptors(FileInterceptor('logo'))
   async updateSecret(
     @Param('id') id: string,
