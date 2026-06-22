@@ -41,6 +41,7 @@ export class AuthService {
                 _id: user._id,
                 name: user.name,
                 email: user.email,
+                salt: secretEncryptionSalt
             },
             access_token: token,
         }
@@ -68,6 +69,7 @@ export class AuthService {
                 _id: user._id,
                 name: user.name,
                 email: user.email,
+                salt: user.secretSalt
             },
             access_token: token,
         }

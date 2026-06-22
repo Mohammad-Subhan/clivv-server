@@ -25,9 +25,6 @@ export class Secret {
     @Prop({ required: true })
     iv: string;
 
-    @Prop({ required: true })
-    authTag: string;
-
     @Prop()
     logo?: string;
 }

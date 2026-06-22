@@ -20,8 +20,4 @@ export class CreateSecretDto {
     @IsNotEmpty({ message: "IV is required" })
     @IsString()
     iv: string;
-
-    @IsNotEmpty({ message: "Auth tag is required" })
-    @IsString()
-    authTag: string;
 }

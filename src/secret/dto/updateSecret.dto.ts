@@ -20,8 +20,4 @@ export class UpdateSecretDto {
     @IsOptional()
     @IsString()
     iv: string;
-
-    @IsOptional()
-    @IsString()
-    authTag: string;
 }

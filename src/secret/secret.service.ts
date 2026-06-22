@@ -23,138 +23,120 @@ export class SecretService {
   }
 
   async createSecret(userId: string, file: Express.Multer.File, createSecretDto: CreateSecretDto) {
-    try {
-      const { name, website, username, encryptedPassword, iv, authTag } = createSecretDto;
+    const { name, website, username, encryptedPassword, iv } = createSecretDto;
 
-      const exists = await this.secretModel.findOne({ name, website, user: new Types.ObjectId(userId) });
-      if (exists) {
-        throw new ConflictException("A secret with this name and website already exists");
-      }
-
-      const user = await this.userService.findOne({ _id: new Types.ObjectId(userId) });
-      if (!user) {
-        throw new NotFoundException("User not found");
-      }
-
-      let uploadedFile: UploadApiResponse | null = null;
-      if (file) {
-        uploadedFile = await this.cloudinaryService.uploadFile(file);
-      }
-
-      await this.secretModel.create({
-        user: new Types.ObjectId(userId),
-        name,
-        website,
-        username,
-        encryptedPassword,
-        iv,
-        authTag,
-        logo: uploadedFile?.secure_url || ""
-      });
-
-      return {
-        message: "Secret created successfully",
-      };
-    } catch (error) {
-      throw error;
+    const exists = await this.secretModel.findOne({ name, website, user: new Types.ObjectId(userId) });
+    if (exists) {
+      throw new ConflictException("A secret with this name and website already exists");
     }
+
+    const user = await this.userService.findOne({ _id: new Types.ObjectId(userId) });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    let uploadedFile: UploadApiResponse | null = null;
+    if (file) {
+      uploadedFile = await this.cloudinaryService.uploadFile(file);
+    }
+
+    await this.secretModel.create({
+      user: new Types.ObjectId(userId),
+      name,
+      website,
+      username,
+      encryptedPassword,
+      iv,
+      logo: uploadedFile?.secure_url || ""
+    });
+
+    return {
+      message: "Secret created successfully",
+    };
   }
 
   async getAllSecrets(userId: string) {
-    try {
-      const secrets = await this.secretModel
-        .find({ user: new Types.ObjectId(userId) })
-        .sort({ createdAt: -1 })
-        .select("-__v -user");
-      return secrets;
-    } catch (error) {
-      throw error;
-    }
+    const secrets = await this.secretModel
+      .find({ user: new Types.ObjectId(userId) })
+      .sort({ createdAt: -1 })
+      .select("-__v -user");
+    return secrets;
   }
 
   async deleteSecret(id: string, userId: string) {
-    try {
-      const secret = await this.secretModel.findOne({ _id: new Types.ObjectId(id), user: new Types.ObjectId(userId) });
-      if (secret && secret.logo) {
-        const publicId = this.getPublicIdFromUrl(secret.logo);
-        if (publicId) {
-          await this.cloudinaryService.deleteFile(publicId);
-        }
+    const secret = await this.secretModel.findOne({ _id: new Types.ObjectId(id), user: new Types.ObjectId(userId) });
+    if (secret && secret.logo) {
+      const publicId = this.getPublicIdFromUrl(secret.logo);
+      if (publicId) {
+        await this.cloudinaryService.deleteFile(publicId);
       }
-
-      const deletedSecret = await this.secretModel.findOneAndDelete({ _id: new Types.ObjectId(id), user: new Types.ObjectId(userId) });
-      if (!deletedSecret) {
-        throw new NotFoundException("Secret not found");
-      }
-      return {
-        message: "Secret deleted successfully",
-      };
-    } catch (error) {
-      throw error;
     }
+
+    const deletedSecret = await this.secretModel.findOneAndDelete({ _id: new Types.ObjectId(id), user: new Types.ObjectId(userId) });
+    if (!deletedSecret) {
+      throw new NotFoundException("Secret not found");
+    }
+    return {
+      message: "Secret deleted successfully",
+    };
   }
 
   async updateSecret(id: string, userId: string, updateSecretDto: UpdateSecretDto, file: Express.Multer.File) {
-    try {
-      const { name, website, username, encryptedPassword, iv, authTag } = updateSecretDto ?? {}
+    const { name, website, username, encryptedPassword, iv } = updateSecretDto ?? {}
 
-      const exists = await this.secretModel.findOne({
+    const exists = await this.secretModel.findOne({
+      _id: new Types.ObjectId(id),
+      user: new Types.ObjectId(userId)
+    });
+    if (!exists) {
+      throw new NotFoundException("Secret not found");
+    }
+
+    const existsWithName = await this.secretModel.findOne({
+      name: name,
+      website: website,
+      user: new Types.ObjectId(userId),
+      _id: { $ne: new Types.ObjectId(id) }
+    });
+    if (existsWithName) {
+      throw new ConflictException("A secret with this name and website already exists");
+    }
+
+    let uploadedFile: UploadApiResponse | null = null;
+    if (file) {
+      uploadedFile = await this.cloudinaryService.uploadFile(file);
+    }
+
+    const updatedSecret = await this.secretModel.findOneAndUpdate(
+      {
         _id: new Types.ObjectId(id),
         user: new Types.ObjectId(userId)
-      });
-      if (!exists) {
-        throw new NotFoundException("Secret not found");
-      }
-
-      const existsWithName = await this.secretModel.findOne({
-        name: name,
-        website: website,
-        user: new Types.ObjectId(userId),
-        _id: { $ne: new Types.ObjectId(id) }
-      });
-      if (existsWithName) {
-        throw new ConflictException("A secret with this name and website already exists");
-      }
-
-      let uploadedFile: UploadApiResponse | null = null;
-      if (file) {
-        uploadedFile = await this.cloudinaryService.uploadFile(file);
-      }
-
-      const updatedSecret = await this.secretModel.findOneAndUpdate(
-        {
-          _id: new Types.ObjectId(id),
-          user: new Types.ObjectId(userId)
-        },
-        {
-          name: name ?? exists.name,
-          website: website ?? exists.website,
-          username: username ?? exists.username,
-          encryptedPassword: encryptedPassword ?? exists.encryptedPassword,
-          iv: iv ?? exists.iv,
-          authTag: authTag ?? exists.authTag,
-          logo: uploadedFile?.secure_url ?? exists.logo
-        },
-        { new: true }
-      );
-      if (!updatedSecret) {
-        throw new NotFoundException("Secret not found");
-      }
-
-      if (uploadedFile && exists.logo) {
-        const publicId = this.getPublicIdFromUrl(exists.logo);
-        if (publicId) {
-          this.cloudinaryService.deleteFile(publicId).catch((err) => {
-            console.error("Failed to delete old logo from Cloudinary:", err);
-          });
-        }
-      }
-
-      return {
-        message: "Secret updated successfully",
-      };
-    } catch (error) {
-      throw error;
+      },
+      {
+        name: name ?? exists.name,
+        website: website ?? exists.website,
+        username: username ?? exists.username,
+        encryptedPassword: encryptedPassword ?? exists.encryptedPassword,
+        iv: iv ?? exists.iv,
+        logo: uploadedFile?.secure_url ?? exists.logo
+      },
+      { new: true }
+    );
+    if (!updatedSecret) {
+      throw new NotFoundException("Secret not found");
     }
+
+    if (uploadedFile && exists.logo) {
+      const publicId = this.getPublicIdFromUrl(exists.logo);
+      if (publicId) {
+        this.cloudinaryService.deleteFile(publicId).catch((err) => {
+          console.error("Failed to delete old logo from Cloudinary:", err);
+        });
+      }
+    }
+
+    return {
+      message: "Secret updated successfully",
+    };
   }
 }
