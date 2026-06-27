@@ -7,7 +7,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
   app.enableCors({
-    origin: "*",
+    origin: process.env.FRONTEND_URL || "https://clivvpass.vercel.app",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   });
   app.useGlobalPipes(new ValidationPipe());
