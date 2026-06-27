@@ -20,7 +20,7 @@ export class UserService {
                 name: registerUserDto.name,
                 email: registerUserDto.email,
                 password: registerUserDto.password,
-                secretSalt: registerUserDto.secretEncryptionSalt
+                salt: registerUserDto.secretEncryptionSalt
             });
 
             return {

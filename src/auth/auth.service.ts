@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
 import { LoginUserDto } from './dto/loginUser.dto';
 import { randomBytes } from 'crypto';
+import { VerifyUserDto } from './dto/VerifyUser.dto';
 
 @Injectable()
 export class AuthService {
@@ -69,9 +70,28 @@ export class AuthService {
                 _id: user._id,
                 name: user.name,
                 email: user.email,
-                salt: user.secretSalt
+                salt: user.salt
             },
             access_token: token,
+        }
+    }
+
+    async verifyUser(verifyUserDto: VerifyUserDto) {
+        const user = await this.userService.findOne({ email: verifyUserDto.email });
+        if (!user) {
+            throw new BadRequestException("Invalid credentials");
+        }
+        const validPassword = await bcrypt.compare(verifyUserDto.password, user.password);
+        if (!validPassword) {
+            throw new BadRequestException("Invalid credentials");
+        }
+        return {
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                salt: user.salt
+            },
         }
     }
 

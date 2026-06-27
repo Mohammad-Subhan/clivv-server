@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { LoginUserDto } from './dto/loginUser.dto';
 import { AuthGuard } from './auth.guard';
 import { User } from './user.decorator';
+import { VerifyUserDto } from './dto/VerifyUser.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -17,6 +18,12 @@ export class AuthController {
     @Post("login")
     async login(@Body() loginUserDto: LoginUserDto) {
         return this.authService.loginUser(loginUserDto);
+    }
+
+    @UseGuards(AuthGuard)
+    @Post("verify")
+    async verify(@Body() verifyUserDto: VerifyUserDto) {
+        return this.authService.verifyUser(verifyUserDto);
     }
 
     @UseGuards(AuthGuard)
